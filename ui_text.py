@@ -26,6 +26,9 @@ study_session_identification_options = [{"label": "Authentication logs", "value"
 
 check_list_options = [{"label": "Exclude only-attendance sessions", "value": "del_only_attendance"}]
 
+max_session_timeout_threshold_label = "Max considered STT"
+max_session_timeout_threshold_placeholder = "STT (minutes)"
+
 general_session_timeout_threshold_label = "Set the (desired) STT"
 general_session_timeout_threshold_placeholder = "STT (minutes)"
 
@@ -36,10 +39,12 @@ component_session_timeout_threshold_button_text = "Add STT"
 component_active_session_timeout_thresholds_placeholder = "No active module specific thresholds"
 
 suggestion_session_timeout_threshold = "Recommended threshold: {} minutes"
+suggestion_session_timeout_threshold_activity_task = "Recommended threshold: {} minutes for activity, {} minutes for task"
 no_suggestion_session_timeout_threshold = "There is not enough examples of this behaviour to make an STT recommendation"
 
 plot_title = "Spread of session durations"
-hovertemplate= ("<b>Session start period %{customdata[0]}</b><br>"+
+hovertemplate = ("<b>Session start period %{customdata[0]}</b><br>" +
+				"Most popular %{customdata[7]}: %{customdata[8]} (%{customdata[9]} times)<br>" +
                 "Session count: %{customdata[1]}<br>" +
                 "Session min: %{customdata[2]} min<br>" +
                 "Session q1: %{customdata[3]} min<br>" +

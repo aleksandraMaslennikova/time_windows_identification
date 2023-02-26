@@ -16,7 +16,7 @@ min_date_allowed = date(2021, 1, 1)
 max_date_allowed = date(2021, 8, 1)
 
 # areas at the site level (related to logs performed not at the course level)
-site_area = ["Overall Site"]
+site_area = ["Overall Site", "Authentication"]
 # modules considered as the quality learning ones
 learning_components = ["Assignment", "File", "Lesson", "URL"]
 

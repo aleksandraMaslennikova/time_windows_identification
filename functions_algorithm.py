@@ -8,107 +8,6 @@ import constants
 # -------------------------------------------------------------------------------
 
 
-# --- INITIAL PRELOADING OF THE DATASETS FOR THE FUTURE USE IN THE APP ---
-def get_session_time_periods(chosen_df,
-                             specific_moodle_course,
-                             type_of_session,
-                             authentication_flag,
-                             stt_flag,
-                             del_attendance_session_flag,
-                             outlier_detection_switch,
-                             general_stt,
-                             active_component_stt_dict):
-    # interpretation of session settings
-    is_course_session = type_of_session == "session_course"
-    is_learning_session = type_of_session == "session_learning"
-    no_specific_moodle_course = len(specific_moodle_course) == 0
-    general_stt = 0 if general_stt is None else general_stt
-
-    # divide the dataset into sessions
-    session_logs, reason_to_end = get_session_logs(chosen_df,
-                                                   specific_moodle_course,
-                                                   type_of_session,
-                                                   authentication_flag,
-                                                   stt_flag,
-                                                   del_attendance_session_flag,
-                                                   outlier_detection_switch,
-                                                   general_stt,
-                                                   active_component_stt_dict)
-
-    num = 0
-    study_session_time_periods = []
-    final_pause_analysis = []
-    for j in range(len(session_logs)):
-        session = session_logs[j]
-        # retrieve information about this current session
-        has_needed_course = False
-        if not no_specific_moodle_course:
-            for log in session:
-                if log["Course_Area"] in specific_moodle_course:
-                   has_needed_course = True
-        has_course_area = False
-        if is_course_session:
-            for log in session:
-                if log["Course_Area"] not in constants.site_area:
-                    has_course_area = True
-        has_learning_component = False
-        if is_learning_session:
-            for log in session:
-                if log["Component"] in constants.learning_components:
-                    has_learning_component = True
-        is_attendance_session = session[-1]["Component"] == "Attendance" and len(session) <= 5
-
-        # process if need to add to the list, and choose start and end of the session
-        if ((not no_specific_moodle_course and has_needed_course) or no_specific_moodle_course) and \
-           ((is_course_session and has_course_area) or not is_course_session) and \
-           ((is_learning_session and has_learning_component) or not is_learning_session) and \
-           ((del_attendance_session_flag and not is_attendance_session) or not del_attendance_session_flag):
-            not_add = False
-            num += 1
-            # select start point
-            i = 0
-            if is_course_session:
-                while (no_specific_moodle_course and session[i]["Course_Area"] in constants.site_area) \
-                        or (not no_specific_moodle_course and session[i]["Course_Area"] not in specific_moodle_course):
-                    i += 1
-            if is_learning_session:
-                while (no_specific_moodle_course and session[i]["Component"] not in constants.learning_components) \
-                        or (not no_specific_moodle_course
-                            and not (session[i]["Course_Area"] in specific_moodle_course
-                                     and session[i]["Component"] in constants.learning_components)):
-                    i += 1
-                    if i == len(session):
-                        i = 0
-                        not_add = True
-                        break
-            if not not_add:
-                session_start = session[i]["Unix_Time"]
-                # select end point
-                i = len(session) - 1
-                if is_course_session:
-                    i = len(session) - 1
-                    while (no_specific_moodle_course and session[i]["Course_Area"] in constants.site_area) \
-                            or (not no_specific_moodle_course
-                                and session[i]["Course_Area"] not in specific_moodle_course):
-                        i -= 1
-                if is_learning_session:
-                    i = len(session) - 1
-                    while (no_specific_moodle_course and session[i]["Component"] not in constants.learning_components) \
-                            or (not no_specific_moodle_course
-                                and not (session[i]["Course_Area"] in specific_moodle_course
-                                         and session[i]["Component"] in constants.learning_components)):
-                        i -= 1
-                if outlier_detection_switch:
-                    session_end = session[i]["Unix_Time"] + session[i]["Estimated_Duration"]
-                else:
-                    session_end = session[i]["Unix_Time"] + general_stt
-                if session[-1]["Component"] == "Logout":
-                    session_end = session[-1]["Unix_Time"]
-                study_session_time_periods.append((session_start, int(session_end)))
-                final_pause_analysis.append(reason_to_end[j])
-    return study_session_time_periods, final_pause_analysis
-
-
 # --- DIVIDE LOGS INTO SESSIONS OF CORRESPONDING SESSION TYPE ---
 def get_session_logs(chosen_df,
                      specific_moodle_course,
@@ -140,6 +39,7 @@ def get_session_logs(chosen_df,
     is_course_session = type_of_session == "session_course"
     is_learning_session = type_of_session == "session_learning"
     is_study_session = is_course_session is False and is_learning_session is False
+    general_stt = 0 if general_stt is None else general_stt
 
     user_list = chosen_df["Student ID"].unique()
     sessions = []
@@ -192,7 +92,7 @@ def get_session_logs(chosen_df,
                     # and immediately after came back to the same Course, we do not interrupt the course session.
                     # This case can represent that the student has received a message, checked the grades
                     # or calendar, etc., which in our opinion means that the student is still working on the course.
-                    if not (next_row["Course_Area"] in constants.site_area and i+2 != len(chosen_df_user_dict)
+                    if not (next_row["Course_Area"] in constants.site_area and i + 2 != len(chosen_df_user_dict)
                             and chosen_df_user_dict[i+2]["Course_Area"] == current_row["Course_Area"]):
                         sessions.append(session_logs)
                         session_logs = []
@@ -213,7 +113,7 @@ def get_session_logs(chosen_df,
                     # the students can navigate through Course_home page,
                     # in this case we do not interrupt the learning session
                     if not (next_row["Component"] == "Course_home"
-                            and i+2 != len(chosen_df_user_dict)
+                            and i + 2 != len(chosen_df_user_dict)
                             and chosen_df_user_dict[i+2]["Component"] not in constants.learning_components):
                         sessions.append(session_logs)
                         session_logs = []
@@ -262,7 +162,7 @@ def get_session_logs(chosen_df,
                         if is_course_session:
                             if current_row["Course_Area"] == next_row["Course_Area"] \
                                     or (next_row["Course_Area"] in constants.site_area
-                                        and i+2 < len(chosen_df_user_dict)
+                                        and i + 2 < len(chosen_df_user_dict)
                                         and current_row["Course_Area"] == chosen_df_user_dict[i+2]["Course_Area"]):
                                 reason_to_end.append(("Same course after inactivity",
                                                       current_row["Component"],
@@ -370,7 +270,7 @@ def get_session_logs(chosen_df,
             # we should also delete the non-quality learning modules from the beginning snd the end
             if is_learning_session:
                 # delete non-quality learning component logs from the beginning of the session (if there are any)
-                if session[0]["Component"] in constants.learning_components:
+                if session[0]["Component"] not in constants.learning_components:
                     id_until_which_delete_logs = 0
                     current_log = session[id_until_which_delete_logs]
                     while current_log["Component"] not in constants.learning_components:
@@ -397,7 +297,7 @@ def get_classified_pause_length_list(pause_analysis, type_of_session, component_
         if pause[0] in constants.stt_suggestion_considered_pause_types[type_of_session] \
                 and pause[2] != 0 \
                 and (component_toggle is None or pause[1] == component_toggle):
-            result_dict[constants.stt_suggestion_map[type_of_session][pause[0]]].append(pause[2]/60.0)
+            result_dict[constants.stt_suggestion_map[type_of_session][pause[0]]].append(pause[2] / 60.0)
     result_list = []
     for pause_type in constants.stt_suggestion_final_pause_types[type_of_session]:
         result_dict[pause_type] = np.array(result_dict[pause_type])
@@ -406,9 +306,9 @@ def get_classified_pause_length_list(pause_analysis, type_of_session, component_
     return np.array(result_list, dtype=object)
 
 
-def get_recommended_threshold(data, labels):
+def get_recommended_threshold(data, labels, max_stt):
     start_point = constants.min_stt_allowed
-    end_point = constants.max_stt_allowed
+    end_point = max_stt  # constants.max_stt_allowed
     bins = list(range(start_point, end_point, 1))
     bins.append(end_point)
     n, bins, patches = plt.hist(data, bins, histtype='bar', stacked=False, fill=True, density=True)
