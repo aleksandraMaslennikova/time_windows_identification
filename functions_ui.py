@@ -61,7 +61,10 @@ def transform_active_components_dict_to_options(options_dict):
 # --- FUNCTION DESCRIPTION ---
 def get_data_for_boxplot(learning_sessions):
     def most_frequent(lst):
-        max_val = max(set(lst), key=lst.count)
+        try:
+            max_val = max(set(lst), key=lst.count)
+        except:
+            return "Not present", 0
         return max_val, lst.count(max_val)
 
     starts = []
@@ -70,12 +73,18 @@ def get_data_for_boxplot(learning_sessions):
     ends_unix = []
     most_freq_activity_task = []
     most_freq_activity_task_count = []
+    most_freq_last_activity_task = []
+    most_freq_last_activity_task_count = []
     most_freq_type = []
     possible_start_values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
     granularity = "activity_granularity" if "Event_Name" in learning_sessions[0][0].keys() else "task_granularity"
     dict_activity_task_by_start = {}
+    dict_last_activity_task_by_start = {}
+    dict_inner_activity_task_by_start = {}
     for start_value in possible_start_values:
         dict_activity_task_by_start[start_value] = []
+        dict_last_activity_task_by_start[start_value] = []
+        dict_inner_activity_task_by_start[start_value] = []
     for session in learning_sessions:
         start_unix = session[0]["Unix_Time"]
         end_unix = session[-1]["Unix_Time"]
@@ -89,21 +98,33 @@ def get_data_for_boxplot(learning_sessions):
         start_session = start_session.hour
         starts.append(start_session)
         ends.append(end_time)
-        for log in session:
+        for i in range(len(session)):
+            log = session[i]
             info = log["Component"] if granularity == "task_granularity" else (log["Component"], log["Event_Name"])
             dict_activity_task_by_start[start_session].append(info)
+            if i == len(session)-1:
+                dict_last_activity_task_by_start[start_session].append(info)
+            else:
+                dict_inner_activity_task_by_start[start_session].append(info)
     for start_value in possible_start_values:
         dict_activity_task_by_start[start_value] = (most_frequent(dict_activity_task_by_start[start_value]))
+        dict_last_activity_task_by_start[start_value] = (most_frequent(dict_last_activity_task_by_start[start_value]))
+        dict_inner_activity_task_by_start[start_value] = (most_frequent(dict_inner_activity_task_by_start[start_value]))
     for start in starts:
         most_freq_activity_task.append(dict_activity_task_by_start[start][0])
         most_freq_activity_task_count.append(dict_activity_task_by_start[start][1])
+        most_freq_last_activity_task.append(dict_last_activity_task_by_start[start][0])
+        most_freq_last_activity_task_count.append(dict_last_activity_task_by_start[start][1])
         most_freq_type.append(granularity[:-12])
     return pd.DataFrame({"Time of session start": starts,
                          "Unix session start": starts_unix,
                          "Time of session end": ends,
                          "Unix session end": ends_unix,
                          "Most freq": most_freq_activity_task,
-                         "Most freq - Count": most_freq_activity_task_count})
+                         "Most freq - Count": most_freq_activity_task_count,
+                         "Most freq last": most_freq_last_activity_task,
+                         "Most freq last - Count": most_freq_last_activity_task_count}
+                        )
 
 
 # --- FUNCTION DESCRIPTION ---
@@ -130,7 +151,9 @@ def get_session_hover_info(data,
         session_max=("Session duration", lambda s: round(s.max(), 2)),
         granularity=("Granularity", lambda s: s.iloc[0].lower()),
         most_freq=("Most freq", lambda s: s.iloc[0]),
-        most_freq_count=("Most freq - Count", lambda s: s.iloc[0])
+        most_freq_count=("Most freq - Count", lambda s: s.iloc[0]),
+        most_freq_last=("Most freq last", lambda s: s.iloc[0]),
+        most_freq_last_count=("Most freq last - Count", lambda s: s.iloc[0])
     )
 
     # data in the format necessary for the plot
@@ -144,13 +167,15 @@ def get_session_hover_info(data,
         hover_data["session_max"],
         hover_data["granularity"],
         hover_data["most_freq"],
-        hover_data["most_freq_count"]
+        hover_data["most_freq_count"],
+        hover_data["most_freq_last"],
+        hover_data["most_freq_last_count"]
     ), axis=-1)
     return hover_data, custom_data
 
 
 # --- FUNCTION DESCRIPTION ---
-def plot_boxplot(data, activity_task_visibility):
+def plot_boxplot(data, activity_task_visibility, current_split_points):
     def plot_hovering_info(granularity, x_movement, width):
         portion = data[data["Granularity"] == granularity].copy()
         hover_data, custom_data = get_session_hover_info(portion, session_start_labels)
@@ -171,8 +196,10 @@ def plot_boxplot(data, activity_task_visibility):
     # plot boxplot data
     fig = px.box(data, x="Time of session start", y="Time of session end", color="Granularity", height=550)
     fig.update_traces(visible=activity_task_visibility["Task"],
+                      marker_color="#115f9a",
                       selector=dict(name="Task"))
     fig.update_traces(visible=activity_task_visibility["Activity"],
+                      marker_color="#0060ff",
                       selector=dict(name="Activity"))
 
     # set plot's title
@@ -211,6 +238,19 @@ def plot_boxplot(data, activity_task_visibility):
                                    fillcolor="green", opacity=0.25, line_width=0, layer="below"),
                               dict(type="rect", xref="x", yref="y", x0="-0.6", y0="14", x1="24", y1="18",
                                    fillcolor="green", opacity=0.25, line_width=0, layer="below")])
+
+    # add current split-points
+    for split_point in current_split_points:
+        val = int(split_point[:-3])
+        fig.add_shape(type='line',
+                      x0=-0.5,
+                      y0=val,
+                      x1=23.5,
+                      y1=val,
+                      line=dict(color='Red'),
+                      xref='x',
+                      yref='y'
+                      )
     return fig
 
 
@@ -337,3 +377,93 @@ def get_component_time_off_task_update(study_session_identification,
         elif type_of_session == "session_learning":
             component_options = sorted(list(constants.learning_components))
     return component_time_off_task, component_options
+
+
+def info_task_in_time_window(sessions, current_split_points):
+    def get_time_window_label(time_window):
+        return time_window[0] + "-" + time_window[1]
+
+    def log_time_window(row):
+        if len(sessions_time_windows) > 0:
+            start_unix = row["Unix_Time"]
+            start_session = datetime.fromtimestamp(start_unix, tz=pytz.timezone("Europe/Rome"))
+            start_session = start_session.hour
+            for j in range(len(sessions_time_windows)-1):
+                tw = sessions_time_windows[j]
+                tw_start = int(tw[0][:-3])
+                tw_end = int(tw[1][:-3])
+                if tw_start <= start_session < tw_end:
+                    return get_time_window_label(tw)
+            return get_time_window_label(sessions_time_windows[-1])
+        else:
+            return None
+
+    def transform_time_in_minutes(duration_seconds):
+        output = ""
+        if duration_seconds >= 3600:
+            hours = duration_seconds//3600
+            duration_seconds = duration_seconds%3600
+            output += str(hours) + "h"
+        if duration_seconds >= 60:
+            minutes = duration_seconds // 60
+            duration_seconds = duration_seconds % 60
+            if minutes != 0:
+                output += str(minutes) + "m"
+        if duration_seconds > 0 or output == "":
+            output += str(duration_seconds) +"s"
+        return output
+
+
+    # defining time windows
+    sessions_time_windows = []
+    if len(current_split_points) >= 2:
+        for i in range(len(current_split_points)-1):
+            current_split = current_split_points[i]
+            next_split = current_split_points[i+1]
+            sessions_time_windows.append((current_split, next_split))
+        sessions_time_windows.append((current_split_points[-1], current_split_points[0]))
+
+    # getting statistical information
+    task_info_dict = {"Overall": {}}
+    for time_window in sessions_time_windows:
+        task_info_dict[get_time_window_label(time_window)] = {}
+    for session in sessions:
+        for i in range(len(session)-1):
+            log = session[i]
+            current_time_window = log_time_window(log)
+            component = log["Component"]
+            if component not in task_info_dict["Overall"]:
+                task_info_dict["Overall"][component] = {
+                    "count": 0,
+                    "duration": 0,
+                }
+            task_info_dict["Overall"][component]["count"] += 1
+            task_info_dict["Overall"][component]["duration"] += log["Duration"]
+            if current_time_window is not None:
+                if component not in task_info_dict[current_time_window]:
+                    task_info_dict[current_time_window][component] = {
+                        "count": 0,
+                        "duration": 0,
+                    }
+                task_info_dict[current_time_window][component]["count"] += 1
+                task_info_dict[current_time_window][component]["duration"] += log["Duration"]
+
+    # transforming dictionary into dataframe
+    for key in task_info_dict:
+        data = {
+            "Task": [],
+            "Number of Occurrences": [],
+            "Total Duration": [],
+            "Average Duration": []
+        }
+        for component in task_info_dict[key]:
+            data["Task"].append(component)
+            data["Number of Occurrences"].append(task_info_dict[key][component]["count"])
+            data["Total Duration"].append(transform_time_in_minutes(task_info_dict[key][component]["duration"]))
+            mean_duration = round(task_info_dict[key][component]["duration"] / task_info_dict[key][component]["count"])
+            data["Average Duration"].append(mean_duration)
+        task_info_dict[key] = pd.DataFrame.from_dict(data).sort_values(by='Average Duration', ascending=False)
+        task_info_dict[key]["Average Duration"] = task_info_dict[key]["Average Duration"].map(transform_time_in_minutes)
+        task_info_dict[key] = task_info_dict[key].to_json(orient="split")
+    return task_info_dict
+

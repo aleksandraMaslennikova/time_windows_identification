@@ -9,20 +9,20 @@ select_specific_period_label = "Select the time interval"
 
 activity_or_task_label = "Select activity or task"
 activity_or_task_options = [{"label": "Activity", "value": "activity_granularity"},
-                            {"label": "Task", "value": "task_granularity"}]
+							{"label": "Task", "value": "task_granularity"}]
 
 temporal_metric_label = "Select the temporal metric"
 temporal_metric_options = [{"label": "Elapsed time", "value": "elapsed-time"},
-                           {"label": "Time-off-task", "value": "time-off-task"}]
+						   {"label": "Time-off-task", "value": "time-off-task"}]
 
 type_of_session_label = "Type of session"
 type_of_session_options = [{"label": "Study session", "value": "session_study"},
-					       {"label": "Course session", "value": "session_course"},
-                           {"label": "Learning session", "value": "session_learning"}]
+						   {"label": "Course session", "value": "session_course"},
+						   {"label": "Learning session", "value": "session_learning"}]
 
 study_session_identification_label = "Select the session identification method"
 study_session_identification_options = [{"label": "Authentication logs", "value": "authentication"},
-                                        {"label": "Session Timeout Threshold (STT)", "value": "stt"}]
+										{"label": "Session Timeout Threshold (STT)", "value": "stt"}]
 
 check_list_options = [{"label": "Exclude only-attendance sessions", "value": "del_only_attendance"}]
 
@@ -44,10 +44,16 @@ no_suggestion_session_timeout_threshold = "There is not enough examples of this 
 
 plot_title = "Spread of session durations"
 hovertemplate = ("<b>Session start period %{customdata[0]}</b><br>" +
-				"Most popular %{customdata[7]}: %{customdata[8]} (%{customdata[9]} times)<br>" +
-                "Session count: %{customdata[1]}<br>" +
-                "Session min: %{customdata[2]} min<br>" +
-                "Session q1: %{customdata[3]} min<br>" +
-                "Session median: %{customdata[4]} min<br>" +
-                "Session q3: %{customdata[5]} min<br>" +
-                "Session max: %{customdata[6]} min<extra></extra>")
+				 "Most common %{customdata[7]}: %{customdata[8]} (%{customdata[9]} times)<br>" +
+				 "Most common session-ending: %{customdata[10]} (%{customdata[11]} times)<br>" +
+				 "Session count: %{customdata[1]}<br>" +
+				 "Session min: %{customdata[2]} min<br>" +
+				 "Session q1: %{customdata[3]} min<br>" +
+				 "Session median: %{customdata[4]} min<br>" +
+				 "Session q3: %{customdata[5]} min<br>" +
+				 "Session max: %{customdata[6]} min<extra></extra>")
+
+current_split_points_placeholder = "No inserted split-points"
+add_split_point_label = "Split-point"
+add_split_point_placeholder = "Time (from 0 to 23)"
+add_split_point_button_text = "Add split-point"

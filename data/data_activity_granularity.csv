@@ -1,0 +1,7 @@
+,Student ID,Course_Area,Component,Event_Name,Unix_Time,Estimated_Duration,Duration
+0,User_1,Authentication,Login,User has logged in,1610662810,0.0,0
+1,User_1,Overall Site,Dashboard,Dashboard viewed,1610662810,4.0,4
+2,User_1,Course_B,Course_home,Course viewed,1610662814,9.0,21
+3,User_1,Course_B,Attendance,Session report viewed,1610662835,20.0,20
+4,User_1,Course_B,Attendance,Attendance taken by student,1610662855,0.0,1
+5,User_1,Course_B,Attendance,Session report viewed,1610662856,17.0,5869

@@ -117,7 +117,7 @@ app.layout = html.Div([
             html.P(children=ui_text.max_session_timeout_threshold_label),
             dcc.Input(id="max-session-timeout-threshold",
                       type="number",
-                      value=60,
+                      value=constants.max_stt_allowed,
                       min=2,
                       required=True,
                       placeholder=ui_text.max_session_timeout_threshold_placeholder),
@@ -176,14 +176,60 @@ app.layout = html.Div([
     ], style={"display": "flex", "margin-left": "10pt", "margin-top": "5pt"}),
 
     html.Div([
-        html.Div([dcc.Graph(id="session-spread-box-plot")])
-    ], style={"width": "85%"}),
+        html.Div([
+            html.Div([dcc.Graph(id="session-spread-box-plot")])
+        ], style={"width": "68%"}),
+
+        html.Div([
+            html.Div([
+                html.Div([
+                    html.Div([
+                        html.P(children=ui_text.add_split_point_label),
+                    ]),
+
+                    html.Div([
+                        dcc.Input(id="split-point",
+                                  type="number",
+                                  min=0,
+                                  max=23,
+                                  step=1,
+                                  placeholder=ui_text.add_split_point_placeholder,
+                                  style={"width": "100%"}),
+                    ], style={"margin-left": "10pt", "width": "70%"}),
+
+                    html.Div([
+                        html.Button(ui_text.add_split_point_button_text,
+                                    id="add-split-point",
+                                    style={"padding-left": "10pt", "padding-right": "10pt"})
+                    ], style={"margin-left": "10pt"})
+                ], style={"display": "flex"}),
+
+                dcc.Dropdown(options=[],
+                             value=[],
+                             multi=True,
+                             placeholder=ui_text.current_split_points_placeholder,
+                             id="current-split-points"),
+
+                dcc.Tabs(
+                    id="time-window-tabs-holder",
+                    children=[],
+                    style={"margin-top": "10pt"}
+                ),
+
+                html.Div(id="time-window-tabs-content",
+                         style={"margin-top": "10pt"})
+            ], style={"width": "100%"})
+        ], style={"margin-left": "10pt", "width": "30%"}),
+    ], style={"display": "flex", "margin-left": "10pt", "margin-top": "5pt"}),
 
     # dcc.Store stores the intermediate value
     dcc.Store(id="pause-info"),
 
     # currently displayed sessions durations
-    dcc.Store(id="current-sessions-durations")
+    dcc.Store(id="current-sessions-durations"),
+
+    # statistical information about tasks in time window
+    dcc.Store(id="time-windows-statistics")
 ])
 
 # -----------------------------------------
@@ -203,7 +249,7 @@ app.layout = html.Div([
     Input(component_id="component-add-session-timeout-threshold", component_property="n_clicks"),
     Input(component_id="component-active-session-timeout-thresholds", component_property="value"),
     State(component_id="components-toggle", component_property="value"),
-    State(component_id="component-session-timeout-threshold", component_property="value"))  #, prevent_initial_call=True)
+    State(component_id="component-session-timeout-threshold", component_property="value"), prevent_initial_call=True)
 def prepare_data_for_plot(observation_start_date,
                           observation_end_date,
                           specific_moodle_course,
@@ -227,8 +273,8 @@ def prepare_data_for_plot(observation_start_date,
     if component_add_stt_button is not None:
         if current_component_selection is not None and component_stt is not None:
             active_component_stt_dict[current_component_selection] = component_stt
-    data_list = []
-    most_popular_activity_task_dict = {}
+
+    data_dict = {}
     # --- GET DATA ACCORDING TO SETTINGS ---
     for granularity in ["activity_granularity", "task_granularity"]:
         chosen_df = functions_ui.get_chosen_df(dict_of_df,
@@ -236,38 +282,42 @@ def prepare_data_for_plot(observation_start_date,
                                                observation_end_date,
                                                granularity)
 
-        learning_sessions_dict, _ = \
-            functions_algorithm.get_session_logs(chosen_df,
-                                                 specific_moodle_course,
-                                                 type_of_session,
-                                                 authentication_flag,
-                                                 stt_flag,
-                                                 del_attendance_session_flag,
-                                                 outlier_detection_switch,
-                                                 general_stt,
-                                                 active_component_stt_dict)
+        learning_sessions, _ = functions_algorithm.get_session_logs(chosen_df,
+                                                                    specific_moodle_course,
+                                                                    type_of_session,
+                                                                    authentication_flag,
+                                                                    stt_flag,
+                                                                    del_attendance_session_flag,
+                                                                    outlier_detection_switch,
+                                                                    general_stt,
+                                                                    active_component_stt_dict)
 
-        temp_df = functions_ui.get_data_for_boxplot(learning_sessions_dict)
-        temp_df["Granularity"] = "Task" if granularity == "task_granularity" else "Activity"
-        data_list.append(temp_df)
-    data = pd.concat(data_list)
-    data.reset_index(inplace=True)
-    return data.to_json(orient='index')
+        data_dict[granularity] = learning_sessions
+    return json.dumps(data_dict)
 
 
 @app.callback(
     Output(component_id="session-spread-box-plot", component_property="figure"),
     Input(component_id="current-sessions-durations", component_property="data"),
-    Input(component_id="activity-task-toggle", component_property="value"), prevent_initial_call=True)
+    Input(component_id="activity-task-toggle", component_property="value"),
+    Input(component_id="current-split-points", component_property="value"), prevent_initial_call=True)
 def update_legend_visibility(data_json,
-                             activity_task_toggle):
+                             activity_task_toggle,
+                             current_split_points):
     # --- PLOT THE DATA ---
-    data = pd.read_json(data_json, orient='index')
+    data_dict = json.loads(data_json)
+    data_list = []
+    for granularity in ["activity_granularity", "task_granularity"]:
+        learning_sessions = data_dict[granularity]
+        temp_df = functions_ui.get_data_for_boxplot(learning_sessions)
+        temp_df["Granularity"] = "Task" if granularity == "task_granularity" else "Activity"
+        data_list.append(temp_df)
+    data = pd.concat(data_list)
     activity_task_visibility = {
         "Task": True if "task_granularity" in activity_task_toggle else "legendonly",
         "Activity": True if "activity_granularity" in activity_task_toggle else "legendonly"
     }
-    fig = functions_ui.plot_boxplot(data, activity_task_visibility)
+    fig = functions_ui.plot_boxplot(data, activity_task_visibility, current_split_points)
     return fig
 
 
@@ -407,6 +457,56 @@ def align_legend_and_activity_task_toggle(legend_desc,
             if visible[i] is True:
                 activity_task_toggle.append(index[i])
     return activity_task_toggle
+
+# current-split-points
+@app.callback(
+    Output(component_id="current-split-points", component_property="options"),
+    Output(component_id="current-split-points", component_property="value"),
+    Input(component_id="add-split-point", component_property="n_clicks"),
+    State(component_id="split-point", component_property="value"),
+    State(component_id="current-split-points", component_property="value"), prevent_initial_call=True)
+def update_current_split_points(add_split_point_button,
+                                split_point_value,
+                                current_split_points):
+    if split_point_value is not None:
+        split_point = str(split_point_value) if split_point_value > 9 else "0" + str(split_point_value)
+        split_point = split_point + ":00"
+        if split_point not in current_split_points:
+            current_split_points.append(split_point)
+    current_split_points.sort()
+    return current_split_points, current_split_points
+
+
+@app.callback(
+    Output(component_id="time-window-tabs-holder", component_property="children"),
+    Output(component_id="time-window-tabs-holder", component_property="value"),
+    Output(component_id="time-windows-statistics", component_property="data"),
+    Input(component_id="current-sessions-durations", component_property="data"),
+    Input(component_id="current-split-points", component_property="value"), prevent_initial_call=True)
+def update_tabs(sessions,
+                current_split_points):
+    sessions = json.loads(sessions)
+    task_info_df = functions_ui.info_task_in_time_window(sessions["task_granularity"], current_split_points)
+    children = []
+    for time_window in task_info_df:
+        children.append(dcc.Tab(label=time_window, value=time_window + '-tab'))
+    return children, "Overall-tab", json.dumps(task_info_df)
+
+
+@app.callback(
+    Output(component_id="time-window-tabs-content", component_property="children"),
+    Input(component_id="time-window-tabs-holder", component_property="value"),
+    Input(component_id="time-windows-statistics", component_property="data"), prevent_initial_call=True)
+def update_tabs_displayed_content(tab_value,
+                                  task_info_df_json):
+    if task_info_df_json is not None:
+        time_window = tab_value[:-4]
+        task_info_df = json.loads(task_info_df_json)
+        dataframe = pd.read_json(task_info_df[time_window], orient='split')
+        return html.Thead(html.Tr([html.Th(col) for col in dataframe.columns])),\
+            html.Tbody([html.Tr([html.Td(dataframe.iloc[i][col]) for col in dataframe.columns]) for i in range(len(dataframe))])
+    else:
+        return []
 
 
 if __name__ == "__main__":
