@@ -51,7 +51,7 @@ def get_session_logs(chosen_df,
         session_logs = []
         for i in range(len(chosen_df_user_dict)):  # analysing the log of each student separately one log-line at a time
             # INTRODUCING VARIABLES USED IN THE CHECK LOOP
-            previous_row_component = chosen_df_user_dict[i-1] or None
+            previous_row_component = chosen_df_user_dict[i-1] if i != 0 else None
             current_row = chosen_df_user_dict[i]
             session_logs.append(current_row)
 
@@ -137,7 +137,7 @@ def get_session_logs(chosen_df,
                         stt_current_component = active_component_stt_dict[current_row["Component"]]
                     else:
                         stt_current_component = general_stt
-                    # check if inactivity_period is bigger then assigned STT
+                    # check if inactivity_period is bigger than assigned STT
                     # (stt is stored in minutes, timeout in seconds)
                     if inactivity_period > stt_current_component*60.0:
                         sessions.append(session_logs)
@@ -289,14 +289,14 @@ def get_session_logs(chosen_df,
     return sessions, reason_to_end
 
 
-def get_classified_pause_length_list(pause_analysis, type_of_session, component_toggle):
+def get_classified_pause_length_list(pause_analysis, type_of_session, specific_component):
     result_dict = {}
     for pause_type in constants.stt_suggestion_final_pause_types[type_of_session]:
         result_dict[pause_type] = []
     for pause in pause_analysis:
         if pause[0] in constants.stt_suggestion_considered_pause_types[type_of_session] \
                 and pause[2] != 0 \
-                and (component_toggle is None or pause[1] == component_toggle):
+                and (specific_component is None or pause[1] == specific_component):
             result_dict[constants.stt_suggestion_map[type_of_session][pause[0]]].append(pause[2] / 60.0)
     result_list = []
     for pause_type in constants.stt_suggestion_final_pause_types[type_of_session]:
@@ -334,3 +334,32 @@ def get_recommended_threshold(data, labels, max_stt):
         return round(change_place, 2)
     except:
         return None
+
+
+def get_session_timeout_threshold_suggestion(chosen_df,
+                                             specific_moodle_course,
+                                             type_of_session,
+                                             specific_component):
+    _, pause_analysis = get_session_logs(chosen_df,
+                                         specific_moodle_course,
+                                         type_of_session,
+                                         authentication_flag=False,
+                                         stt_flag=True,
+                                         del_attendance_session_flag=False,
+                                         outlier_detection_switch=True,
+                                         general_stt=0,
+                                         active_component_stt_dict={})
+    preprocessed_analysis = get_classified_pause_length_list(pause_analysis,
+                                                             type_of_session,
+                                                             specific_component)
+    error_message = "There is not enough examples of this behaviour to make an STT recommendation"
+    if len(preprocessed_analysis[0]) != 0 or len(preprocessed_analysis[1]) != 0:
+        stt_suggestion = get_recommended_threshold(preprocessed_analysis,
+                                                   constants.stt_suggestion_final_pause_types[type_of_session],
+                                                   constants.max_stt_allowed)
+        if stt_suggestion is not None and not np.isnan(stt_suggestion):
+            return stt_suggestion
+        else:
+            return error_message
+    else:
+        return error_message
