@@ -28,6 +28,49 @@ The csv-files contain the following columns:
 * _Estimated_Duration_ - the estimation of how much time a student has actually spent performing the action.
 * _Duration_ - the value calculated by subtracting the timestamps of two consecutive actions.
 
+**NB! Trasformation of the activity granularity file into the task granularity file**
+If you only have the activity granularity logs at hand, this code will transform your activity granularity file into a file with task granularity.
+You just need to indicate `file_path_activity_granularity`, i.e. path to the file where data with activity granularity is stored, and `file_path_task_granularity`, i.e. path to the file where data with task granularity will be stored.
+```
+df = pd.read_csv(file_path_activity_granularity)
+user_list = df["Student ID"].unique()
+
+# list for every column of the final dataframe
+student_id_column = []
+course_area_column = []
+component_column = []
+unix_time_column = []
+duration_column = []
+estimated_duration_column = []
+
+for user in user_list:
+  user_df = df[df["Student ID"] == user]
+  
+  for key1, course_area_df in user_df.groupby((user_df["Course_Area"].shift() != user_df["Course_Area"]).cumsum()):
+    for key2, component_df in course_area_df.groupby((course_area_df["Component"].shift() != course_area_df["Component"]).cumsum()):
+      component_df_dict = component_df.to_dict('records')
+      sum_duration = 0
+      sum_estimated_duration = 0
+      for row in component_df_dict:
+        sum_duration += row["Duration"]
+        sum_estimated_duration += row["Estimated_duration"]
+      student_id_column.append(user)
+      course_area_column.append(component_df_dict[0]["Course_Area"])
+      component_column.append(component_df_dict[0]["Component"])
+      unix_time_column.append(component_df_dict[0]["Unix_Time"])
+      duration_column.append(sum_duration)
+      estimated_duration_column.append(sum_estimated_duration)
+
+data_task_granularity = {'Student ID': student_id_column,
+						 'Course_Area': course_area_column,
+						 'Component': component_column,
+						 'Unix_Time': unix_time_column,
+						 'Estimated_duration': estimated_duration_column,
+						 'Duration': duration_column}
+df_task = pd.DataFrame(data_task_granularity)
+df_task.to_csv(file_path_task_granularity) 
+```
+
 ### Divide your log-data into sessions
 
 If you are only interested in this functionality, you just need two files from the repository: **constants.py** and **functions_algorithm.py**.
