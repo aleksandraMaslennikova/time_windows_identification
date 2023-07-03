@@ -29,6 +29,7 @@ The csv-files contain the following columns:
 * _Duration_ - the value calculated by subtracting the timestamps of two consecutive actions.
 
 **NB! Trasformation of the activity granularity file into the task granularity file**
+
 If you only have the activity granularity logs at hand, this code will transform your activity granularity file into a file with task granularity.
 You just need to indicate `file_path_activity_granularity`, i.e. path to the file where data with activity granularity is stored, and `file_path_task_granularity`, i.e. path to the file where data with task granularity will be stored.
 ```
