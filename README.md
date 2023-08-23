@@ -3,13 +3,15 @@
 
 This repository contains the code that divides the log data into sessions, calculates the suggestion for Session Timeout Threshold (STT), and provides a Visual Tool that assists in determining time-windows for future analysis.
 
+For further details on all the definitions and the algorithm's functionality, consult [Visual Analytics for Session-based Time-Windows Identification in Virtual Learning Environments](https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=10017679&casa_token=6AioK6bO2-oAAAAA:V3P14EYkl_lfoNEk3jmtMlvi-947j6TD1em0KS3Zr0ws83aYojucpYZR1QOx5sZuHCWQnUN5rQ&tag=1).																		
 ## Table of contents
 * [Quick start. Data structure](#data-structure)
 * [Quick start. Divide your log-data into sessions](#divide-your-log-data-into-sessions)
 * [Quick start. Get Session Timeout Threshold suggestion](#get-session-timeout-threshold-suggestion)
 * [Quick start. Run Visual Tool to determine time-windows](#run-visual-tool-to-determine-time-windows)
 * [License](#license)
-
+* [Acknowledgements](#acknowledgements)
+* [Contacts](#contact--s-)
 
 ## Quick start
 
@@ -18,6 +20,8 @@ This section contains a description of the data structure expected by the algori
 ### Data structure
 
 The **data/** folder contains examples of expected csv-files. The Visual Tool requires two files to function properly: one with activity granularity and another one with task granularity.
+
+To learn more about the data structure used in the algorithm, read [Time-on-Task Estimation by data-driven Outlier Detection based on Learning Activities](https://dl.acm.org/doi/pdf/10.1145/3506860.3506913?casa_token=MSB7wHOmFRUAAAAA:OXQm3n6X4H9-MUtdjC9OEnRBu9FLQA3M3ziWjvE1Q3Wtl8oV-TsQoKO0sJ1LY3ogwyJ2rufHdxLk). Below you will find a brief summary description.
 
 The csv-files contain the following columns:
 * _Student ID_ - the unique ID assigned to each student.
@@ -164,3 +168,24 @@ python app.py
 ## License
 
 This project is licensed under the terms of the GNU General Public License v3.0.
+
+If you use the library in an academic setting, please cite the following papers:
+
+> A. Maslennikova, D. Rotelli and A. Monreale, "Visual Analytics for Session-based Time-Windows Identification in Virtual Learning Environments," 2022 26th International Conference Information Visualisation (IV), Vienna, Austria, 2022, pp. 251-258, https://ieeexplore.ieee.org/abstract/document/10017679
+
+```
+@inproceedings{maslennikova2022visual,
+  title={Visual Analytics for Session-based Time-Windows Identification in Virtual Learning Environments},
+  author={Maslennikova, Aleksandra and Rotelli, Daniela and Monreale, Anna},
+  booktitle={2022 26th International Conference Information Visualisation (IV)},
+  pages={251--258},
+  year={2022},
+  organization={IEEE}
+}
+```
+
+## Acknowledgements
+This work has been partially supported by EU – Horizon 2020 Program under the scheme “INFRAIA-01-2018-2019 – Integrating Activities for Advanced Communities”, Grant Agreement n.871042, “SoBigData++: European Integrated Infrastructure for Social Mining and Big Data Analytics” (http://www.sobigdata.eu), the scheme "HORIZON-INFRA-2021-DEV-02 - Developing and consolidating the European research infrastructures landscape, maintaining global leadership (2021)", Grant Agreement n.101079043, “SoBigData RI PPP: SoBigData RI Preparatory Phase Project”, by NextGenerationEU - National Recovery and Resilience Plan (Piano Nazionale di Ripresa e Resilienza, PNRR) - Project: “SoBigData.it - Strengthening the Italian RI for Social Mining and Big Data Analytics” - Prot. IR0000013 - Avviso n. 3264 del 28/12/2021, and by PNRR - M4C2 - Investimento 1.3, Partenariato Esteso PE00000013 - ``FAIR - Future Artificial Intelligence Research" - Spoke 1 "Human-centered AI", funded by the European Commission under the NextGeneration EU programme.
+
+## Contact(s)
+[Aleksandra Maslennikova](mailto:aleksandra.maslennikova@phd.unipi.it) - Department of Computer Science - University of Pisa
